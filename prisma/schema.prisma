@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum TriagePriority {
+  RED
+  ORANGE
+  YELLOW
+  GREEN
+  BLUE
+}
+
+enum FacilityType {
+  UPA
+  CLINIC
+}
+
+enum AgeGroup {
+  INFANT
+  CHILD
+  ADULT
+  ELDERLY
+}
+
+// ─── Facility ─────────────────────────────────────────────────────────────────
+
+model Facility {
+  id           String       @id @default(cuid())
+  name         String
+  type         FacilityType
+  city         String
+  state        String       @default("RJ")
+  capacity     Int
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+
+  triageLogs   TriageLog[]
+  queueMetrics QueueMetrics?
+
+  @@index([isActive])
+}
+
+// ─── Patient ──────────────────────────────────────────────────────────────────
+
+model Patient {
+  id          String    @id @default(cuid())
+  displayName String
+  ageGroup    AgeGroup
+  ageYears    Int?
+  gender      String?
+
+  createdAt   DateTime  @default(now())
+  triageLogs  TriageLog[]
+}
+
+// ─── TriageLog ────────────────────────────────────────────────────────────────
+
+model TriageLog {
+  id               String          @id @default(cuid())
+
+  patient          Patient         @relation(fields: [patientId], references: [id])
+  patientId        String
+  facility         Facility        @relation(fields: [facilityId], references: [id])
+  facilityId       String
+  nurseId          String?
+
+  // Manchester Triage fields
+  chiefComplaint   String
+  painScore        Int?
+  respiratoryRate  Int?
+  heartRate        Int?
+  oxygenSat        Int?
+  temperature      Float?
+  consciousness    String?
+  freeText         String?
+  discriminators   String[]
+
+  // AI output fields — all nullable; null when classification was skipped
+  aiSuggestedColor TriagePriority?
+  aiConfidence     Float?
+  aiReasoning      Json?
+  aiUsed           Boolean         @default(false)
+  aiMethod         String?
+
+  // Final nurse decision
+  confirmedColor   TriagePriority
+  nurseOverride    Boolean         @default(false)
+
+  arrivalAt         DateTime        @default(now())
+  triageCompletedAt DateTime?
+  waitMinutes       Int?
+  isSimulated       Boolean         @default(false)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([facilityId, createdAt])
+  @@index([confirmedColor])
+  @@index([isSimulated])
+  @@index([createdAt])
+}
+
+// ─── QueueMetrics (materialized snapshot) ─────────────────────────────────────
+// One row per facility. Cron upserts this; SSE reads it. Never computed live.
+
+model QueueMetrics {
+  id             String   @id @default(cuid())
+
+  facility       Facility @relation(fields: [facilityId], references: [id])
+  facilityId     String   @unique
+
+  currentLoad    Int
+  loadPercent    Float
+  avgWaitMinutes Float
+
+  // Per-color breakdown stored as JSON for flexibility (D-02)
+  // Shape: { red: {count, avgWait}, orange: {...}, yellow: {...}, green: {...}, blue: {...} }
+  priorityBreakdown Json
+
+  computedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
