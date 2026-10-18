@@ -1,0 +1,21 @@
+name: Simulate cron tick
+
+on:
+  schedule:
+    # Every 15 minutes — works around Vercel Hobby plan's once-a-day cron limit
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/simulate
+        run: |
+          status=$(curl -s -o /dev/stderr -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.SUS_FLOW_URL || 'https://sus-flow.vercel.app' }}/api/cron/simulate")
+          echo "HTTP status: $status"
+          if [ "$status" -ge 300 ]; then
+            exit 1
+          fi
