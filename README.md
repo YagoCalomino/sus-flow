@@ -1,35 +1,12 @@
 # SUS-Flow
 
-[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Next.js 14](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+Real-time queue dashboard for Brazilian public healthcare (SUS), with Manchester Protocol triage. Built around a **pre-aggregation pattern**: a scheduled job computes `QueueMetrics` snapshots in PostgreSQL, so N concurrent dashboard clients read precomputed rows over SSE instead of triggering N aggregation queries.
 
-Live queue dashboard and AI-assisted triage portal for Brazilian public healthcare (SUS), implementing the Manchester Triage Protocol.
+[Live demo](https://sus-flow.vercel.app) · Synthetic data only, not a medical device.
 
-[Live Demo](https://sus-flow.vercel.app)
+## Data flow
 
----
-
-## What it is
-
-SUS-Flow makes Brazilian public healthcare wait times visible to citizens through a real-time queue dashboard, while providing nurses with an AI-assisted triage form implementing the Manchester Triage Protocol. Citizens can see live queue depths and estimated wait times by priority without logging in. Nurses access a protected portal where structured vital signs and chief complaints are classified by a hybrid rule engine + Google Gemini AI, with full audit trail.
-
-> **⚠️ Synthetic data:** All patient data shown in the application is entirely synthetic. No real patient data is used or stored. This project is not a medical device.
-
----
-
-## Tech stack
-
-- **Framework:** Next.js 14 App Router (TypeScript)
-- **Database:** Neon PostgreSQL + Prisma 6 (pooled + direct URLs)
-- **Real-time:** Server-Sent Events (Node.js runtime)
-- **UI:** shadcn/ui + Tailwind CSS + Framer Motion
-- **Forms:** React Hook Form + Zod
-- **AI:** Vercel AI SDK v6 + Google Gemini (free tier via `@ai-sdk/google`)
-- **Auth:** iron-session (demo mode — one-click nurse login)
-- **Charts:** Recharts
-- **Deploy:** Vercel
-- **Tests:** Vitest
+Triage events (Prisma/PostgreSQL) → scheduled aggregation (Vercel Cron) → `QueueMetrics` snapshot table → SSE stream → dashboard
 
 ---
 
@@ -37,7 +14,7 @@ SUS-Flow makes Brazilian public healthcare wait times visible to citizens throug
 
 ```bash
 # 1. Clone
-git clone https://github.com/YOUR_USERNAME/sus-flow.git
+git clone https://github.com/YagoCalomino/sus-flow.git
 cd sus-flow
 
 # 2. Install dependencies
@@ -83,8 +60,6 @@ Open http://localhost:3000 to see the public dashboard. Navigate to /login to ac
 
 > **Note:** The simulation cron job runs hourly on Vercel's Hobby plan (`vercel.json` schedule). For more frequent simulation (every minute), upgrade to Vercel Pro.
 
-Live deployment: https://sus-flow.vercel.app *(update this URL after your first deploy)*
-
 ---
 
 ## Architecture notes
@@ -106,3 +81,5 @@ The nurse portal uses iron-session for cookie-based session management. A one-cl
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](./LICENSE) file for details.
+
+> Developed in a private repository and published here with a clean history. Development continues in this repo.
